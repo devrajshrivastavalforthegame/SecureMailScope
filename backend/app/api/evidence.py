@@ -1,11 +1,13 @@
-﻿from fastapi import APIRouter, UploadFile, File, HTTPException
+﻿from __future__ import annotations
+
+from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from backend.app.services.evidence_service import save_evidence
 
 
 router = APIRouter(
     prefix="/api/evidence",
-    tags=["Evidence"]
+    tags=["Evidence"],
 )
 
 
@@ -14,7 +16,7 @@ async def upload_evidence(file: UploadFile = File(...)):
     if not file.filename:
         raise HTTPException(
             status_code=400,
-            detail="No file supplied."
+            detail="No file supplied.",
         )
 
     try:
@@ -23,17 +25,17 @@ async def upload_evidence(file: UploadFile = File(...)):
         return {
             "success": True,
             "message": "PCAP evidence uploaded successfully.",
-            "case": case
+            "case": case,
         }
 
     except ValueError as exc:
         raise HTTPException(
             status_code=400,
-            detail=str(exc)
-        )
+            detail=str(exc),
+        ) from exc
 
-    except Exception as exc:
+    except Exception:
         raise HTTPException(
             status_code=500,
-            detail=f"Evidence processing failed: {exc}"
+            detail="Evidence processing failed.",
         )
