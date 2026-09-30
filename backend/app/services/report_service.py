@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from reportlab.lib import colors
@@ -24,17 +25,59 @@ REPORT_DIR = BASE_DIR / "reports"
 
 REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
+CASE_ID_PATTERN = re.compile(
+    r"^CASE-\d{8}-[A-F0-9]{8}$"
+)
+
 
 def _load_analysis(case_id: str) -> dict:
-    path = DATA_DIR / f"{case_id}_analysis.json"
+    if not CASE_ID_PATTERN.fullmatch(case_id):
+        raise ValueError("Invalid case ID.")
+
+    data_root = DATA_DIR.resolve()
+
+    path = (
+        DATA_DIR / f"{case_id}_analysis.json"
+    ).resolve()
+
+    if path.parent != data_root:
+        raise ValueError(
+            "Invalid analysis storage path."
+        )
 
     if not path.exists():
         raise FileNotFoundError(
-            f"Analysis not found for case {case_id}"
+            "Analysis not found."
         )
 
-    with path.open("r", encoding="utf-8") as f:
-        return json.load(f)
+    if not path.is_file():
+        raise ValueError(
+            "Analysis reference is not a regular file."
+        )
+
+    try:
+        payload = json.loads(
+            path.read_text(encoding="utf-8")
+        )
+    except (json.JSONDecodeError, OSError) as exc:
+        raise ValueError(
+            "Stored analysis is invalid."
+        ) from exc
+
+    if not isinstance(payload, dict):
+        raise ValueError(
+            "Stored analysis has an invalid structure."
+        )
+
+    if (
+        "case" not in payload
+        or "analysis" not in payload
+    ):
+        raise ValueError(
+            "Stored analysis is incomplete."
+        )
+
+    return payload
 
 
 def _text(value) -> str:

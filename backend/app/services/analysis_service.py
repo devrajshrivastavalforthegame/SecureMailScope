@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 from backend.app.ml.anomaly_detector import analyze_anomaly
 import json
+import re
 from pathlib import Path
 
 from scapy.all import rdpcap, IP, IPv6, TCP, Raw
@@ -22,6 +23,8 @@ from backend.app.rules.rule_engine import (
 
 
 BASE_DIR = Path(__file__).resolve().parents[3]
+
+MAX_ANALYSIS_BYTES = 25 * 1024 * 1024
 
 UPLOAD_DIR = BASE_DIR / "uploads"
 DATA_DIR = BASE_DIR / "data"
@@ -192,16 +195,57 @@ def reconstruct_sessions(pcap_path: Path):
 
 
 def analyze_case(case_id: str):
+    if not re.fullmatch(
+        r"CASE-\d{8}-[A-F0-9]{8}",
+        case_id,
+    ):
+        raise ValueError("Invalid case ID.")
+
     case = find_case(case_id)
 
+    stored_filename = case.get("stored_filename")
+
+    if (
+        not isinstance(stored_filename, str)
+        or not re.fullmatch(
+            r"CASE-\d{8}-[A-F0-9]{8}\.(?:pcap|pcapng)",
+            stored_filename,
+        )
+    ):
+        raise ValueError(
+            "Invalid stored evidence reference."
+        )
+
+    upload_root = UPLOAD_DIR.resolve()
     pcap_path = (
-        UPLOAD_DIR
-        / case["stored_filename"]
-    )
+        UPLOAD_DIR / stored_filename
+    ).resolve()
+
+    if pcap_path.parent != upload_root:
+        raise ValueError(
+            "Invalid evidence storage path."
+        )
 
     if not pcap_path.exists():
         raise FileNotFoundError(
-            f"Stored evidence not found: {pcap_path}"
+            "Stored evidence not found."
+        )
+
+    if not pcap_path.is_file():
+        raise ValueError(
+            "Stored evidence is not a regular file."
+        )
+
+    try:
+        evidence_size = pcap_path.stat().st_size
+    except OSError as exc:
+        raise ValueError(
+            "Unable to inspect stored evidence."
+        ) from exc
+
+    if evidence_size > MAX_ANALYSIS_BYTES:
+        raise ValueError(
+            "Evidence exceeds the 25 MB analysis limit."
         )
 
     reconstruction = reconstruct_sessions(
