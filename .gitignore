@@ -1,0 +1,33 @@
+﻿# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Runtime data
+data/*.json
+uploads/*
+reports/*.pdf
+reports/*.html
+
+# Generated release artifacts
+SecureMailScope-SIH2026/
+SecureMailScope-SIH2026-FINAL.zip
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
