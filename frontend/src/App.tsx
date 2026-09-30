@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import {
   ShieldCheck,
   ShieldAlert,
@@ -116,6 +116,33 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [dragging, setDragging] = useState(false)
+  const validateEvidenceFile = (candidate: File): boolean => {
+    const extension = candidate.name
+      .toLowerCase()
+      .split('.')
+      .pop()
+
+    if (extension !== 'pcap' && extension !== 'pcapng') {
+      setFile(null)
+      setError('Only PCAP and PCAPNG files are supported.')
+      return false
+    }
+
+    if (candidate.size === 0) {
+      setFile(null)
+      setError('The selected file is empty.')
+      return false
+    }
+
+    if (candidate.size > 25 * 1024 * 1024) {
+      setFile(null)
+      setError('The selected file exceeds the 25 MB upload limit.')
+      return false
+    }
+
+    setError('')
+    return true
+  }
   const [selectedPacket, setSelectedPacket] = useState<number | null>(null)
 
   const analyzeCase = async (caseId: string) => {
@@ -185,6 +212,12 @@ function App() {
 
       if (!response.ok) {
         throw new Error(`PDF export failed (${response.status})`)
+      }
+
+      const contentType = response.headers.get('content-type') || ''
+
+      if (!contentType.toLowerCase().includes('application/pdf')) {
+        throw new Error('The report server returned an unexpected file type.')
       }
 
       const blob = await response.blob()
@@ -257,7 +290,7 @@ function App() {
           <div>
             <div className="eyebrow">
               <Activity size={15} />
-              SMTP • STARTTLS • TLS • X.509
+              SMTP � STARTTLS � TLS � X.509
             </div>
             <h1>Cryptographic Security Posture</h1>
             <p>
@@ -298,7 +331,7 @@ function App() {
               e.preventDefault()
               setDragging(false)
               const dropped = e.dataTransfer.files?.[0]
-              if (dropped) setFile(dropped)
+              if (dropped) validateEvidenceFile(dropped)
             }}
           >
             <div className="upload-icon">
@@ -316,7 +349,16 @@ function App() {
               <input
                 type="file"
                 accept=".pcap,.pcapng"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                onChange={(e) => {
+                const selected = e.target.files?.[0]
+
+                if (selected) {
+                  validateEvidenceFile(selected)
+                } else {
+                  setFile(null)
+                  setError('')
+                }
+              }}
               />
               Choose PCAP
             </label>
@@ -334,7 +376,7 @@ function App() {
               disabled={!file || loading}
               onClick={handleUpload}
             >
-              {loading ? 'Analyzing Evidence…' : 'Run Security Analysis'}
+              {loading ? 'Analyzing Evidence�' : 'Run Security Analysis'}
               {!loading && <ChevronRight size={18} />}
             </button>
           </div>
@@ -391,7 +433,7 @@ function App() {
                 icon={<AlertTriangle size={21} />}
                 label="Findings"
                 value={String(posture.summary.total)}
-                sub={`${posture.summary.critical} critical • ${posture.summary.high} high`}
+                sub={`${posture.summary.critical} critical � ${posture.summary.high} high`}
               />
             </section>
 
@@ -731,7 +773,7 @@ function App() {
       </main>
 
       <footer>
-        SecureMailScope • Passive PCAP Analysis • Explainable Evidence
+        SecureMailScope � Passive PCAP Analysis � Explainable Evidence
       </footer>
     </div>
   )
@@ -796,5 +838,3 @@ function InfoRows({ rows }: { rows: string[][] }) {
 }
 
 export default App
-
-
